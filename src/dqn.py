@@ -21,7 +21,7 @@ class DQN:
     def __init__(
         self,
         env,
-        capacity,
+        replay_memory_size,
         epsilon_start,
         epsilon_end,
         epsilon_decay_steps,
@@ -42,7 +42,7 @@ class DQN:
         self.bs = bs
         self.tau = tau
 
-        self.replay_memory = deque(maxlen=capacity)
+        self.replay_memory = deque(maxlen=replay_memory_size)
 
         self.policy_network = MLP(env, hidden_dim)
         self.target_network = MLP(env, hidden_dim)
@@ -55,6 +55,8 @@ class DQN:
         self.criterion = nn.MSELoss()
 
         self.metric_tracker = MetricTracker(save_path)
+
+        self.timestep = 0
 
     @torch.no_grad()
     def predict(self, observation):
@@ -112,8 +114,9 @@ class DQN:
         episode_reward = 0
 
         start_time = last_logging = time.time()
-        with alive_bar(total_timesteps, enrich_print=False) as bar:
-            for t in range(total_timesteps):
+        with alive_bar(total_timesteps - self.timestep, enrich_print=False) as bar:
+            for t in range(self.timestep, total_timesteps):
+                self.timestep = t
                 current_time = time.time()
                 if verbose and current_time - last_logging > log_freq_time:
                     stats = {
@@ -169,13 +172,22 @@ class DQN:
         logger.info(f"loading from checkpoint {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path)
         self.policy_network.load_state_dict(checkpoint["model"])
+        self.target_network.load_state_dict(checkpoint["model"])
         self.optimizer.load_state_dict(checkpoint["optimizer"])
+        self.replay_memory = checkpoint["replay_memory"]
+        self.timestep = checkpoint["timestep"]
 
     def save_checkpoint(self):
         checkpoint_dir = os.path.join(self.save_path, "checkpoints")
         os.makedirs(checkpoint_dir, exist_ok=True)
         checkpoint_path = os.path.join(checkpoint_dir, "checkpoint.pth")
-        torch.save(self.policy_network.state_dict(), checkpoint_path)
+        checkpoint = {
+            "model": self.policy_network.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "replay_memory": self.replay_memory,
+            "timestep": self.timestep + 1,
+        }
+        torch.save(checkpoint, checkpoint_path)
         logger.info(f"saved checkpoint at {checkpoint_path}")
 
 

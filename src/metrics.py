@@ -46,12 +46,12 @@ class MetricTracker:
         self.metrics = {}
 
     def print_metrics(self, stats):
-        metric_info = ""
+        metric_info = []
         for stat_name, stat_value in stats.items():
-            metric_info += f"{stat_name}: {stat_value:5}, "
+            metric_info.append(f"{stat_name}: {stat_value:5}")
         for metric in self.metrics.values():
-            metric_info += f"{metric.name}: {metric.get_average(100):6.2f}, "
-        logger.info(metric_info[:-2])
+            metric_info.append(f"{metric.name}: {metric.get_average(10):6.2f}")
+        logger.info(", ".join(metric_info))
 
     def update_metric(self, name, y):
         if name not in self.metrics:
