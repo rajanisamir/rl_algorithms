@@ -3,6 +3,7 @@ import logging
 
 import matplotlib
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -34,12 +35,15 @@ class MetricTracker:
     def __init__(self, save_dir):
         self.tb_path = os.path.join(save_dir, "tb_logs")
         self.fig_path = os.path.join(save_dir, "figs")
-
-        logger.info(f"tensorboard logs will be saved at {self.tb_path}")
-        logger.info(f"figures will be saved at {self.fig_path}")
+        self.metrics_path = os.path.join(save_dir, "metrics")
 
         os.makedirs(self.tb_path, exist_ok=True)
         os.makedirs(self.fig_path, exist_ok=True)
+        os.makedirs(self.metrics_path, exist_ok=True)
+
+        logger.info(f"tensorboard logs will be saved at {self.tb_path}")
+        logger.info(f"figures will be saved at {self.fig_path}")
+        logger.info(f"figures will be saved at {self.metrics_path}")
 
         self.writer = SummaryWriter(self.tb_path)
         self.save_dir = save_dir
@@ -58,11 +62,12 @@ class MetricTracker:
             self.metrics[name] = Metric(name, self.writer)
         self.metrics[name].update_metric(y)
 
-    def save_plots(self):
+    def save_metrics(self):
         if len(self.metrics) == 0:
             logger.warn("no metrics to save")
             return
 
+        # save plots
         matplotlib.style.use("fivethirtyeight")
         fig, axs = plt.subplots(
             len(self.metrics), 1, figsize=(8, 5 * len(self.metrics))
@@ -75,4 +80,11 @@ class MetricTracker:
         fig_save_path = os.path.join(self.fig_path, "metrics.png")
         plt.savefig(fig_save_path)
         logger.info(f"figure saved at {fig_save_path}")
-        # logger.info(f"metrics saved at {metric_save_path}")
+
+        # save metrics
+        metrics_df = pd.DataFrame()
+        for metric in self.metrics.values():
+            metrics_df[metric.name] = pd.Series(metric.y)
+        metrics_save_path = os.path.join(self.metrics_path, "metrics.csv")
+        metrics_df.to_csv(metrics_save_path)
+        logger.info(f"metrics saved at {metrics_save_path}")

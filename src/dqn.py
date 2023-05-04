@@ -25,12 +25,14 @@ class DQN:
         epsilon_start,
         epsilon_end,
         epsilon_decay_steps,
+        epsilon_eval,
         gamma,
         lr,
         bs,
         tau,
         hidden_dim,
         save_path,
+        eval=False,
     ):
         self.env = env
         self.save_path = save_path
@@ -51,12 +53,15 @@ class DQN:
         policy_network_str = "\n\t" + str(self.policy_network).replace("\n", "\n\t")
         logger.info(f"policy network looks like: {policy_network_str}")
 
-        self.optimizer = torch.optim.RMSprop(self.policy_network.parameters(), lr=lr)
+        self.optimizer = torch.optim.Adam(self.policy_network.parameters(), lr=lr)
         self.criterion = nn.MSELoss()
 
         self.metric_tracker = MetricTracker(save_path)
 
         self.timestep = 0
+
+        if eval:
+            self.epsilon = epsilon_eval
 
     @torch.no_grad()
     def predict(self, observation):
@@ -64,6 +69,13 @@ class DQN:
             return self.env.action_space.sample()
         q_values = self.policy_network(torch.tensor(observation, dtype=torch.float32))
         return torch.argmax(q_values).item()
+
+    @torch.no_grad()
+    def predict_value(self, observation):
+        if np.random.uniform() < self.epsilon:
+            return self.env.action_space.sample()
+        q_values = self.policy_network(torch.tensor(observation, dtype=torch.float32))
+        return torch.max(q_values).item()
 
     def train(self):
         """Sample and train on a random minibatch of transitions from replay memory."""
@@ -166,7 +178,7 @@ class DQN:
 
                 bar()
 
-        self.metric_tracker.save_plots()
+        self.metric_tracker.save_metrics()
 
     def load_checkpoint(self, checkpoint_path):
         logger.info(f"loading from checkpoint {checkpoint_path}")
@@ -189,6 +201,7 @@ class DQN:
         }
         torch.save(checkpoint, checkpoint_path)
         logger.info(f"saved checkpoint at {checkpoint_path}")
+        return checkpoint_path
 
 
 class MLP(nn.Module):
