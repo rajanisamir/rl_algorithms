@@ -1,0 +1,13 @@
+LunarLander-v2:
+  replay_memory_size: 50000
+  epsilon_start: 1.0
+  epsilon_end: 0.05
+  epsilon_decay_steps: 150000
+  epsilon_eval: 0.05
+  gamma: 0.99
+  lr: 0.0005
+  bs: 32
+  tau: 250
+  double_dqn: True
+  hidden_dim: 32
+  total_timesteps: 200000

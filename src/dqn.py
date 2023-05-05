@@ -30,6 +30,7 @@ class DQN:
         lr,
         bs,
         tau,
+        double_dqn,
         hidden_dim,
         save_path,
         eval=False,
@@ -43,6 +44,7 @@ class DQN:
         self.gamma = gamma
         self.bs = bs
         self.tau = tau
+        self.double_dqn = double_dqn
 
         self.replay_memory = deque(maxlen=replay_memory_size)
 
@@ -86,23 +88,49 @@ class DQN:
             np.array([transition.state for transition in minibatch]),
             dtype=torch.float32,
         )
-        labels = torch.tensor(
-            [
-                transition.reward
-                + (
-                    self.gamma
-                    * torch.max(
-                        self.target_network(
+        if self.double_dqn:
+            labels = torch.tensor(
+                [
+                    transition.reward
+                    + (
+                        self.gamma
+                        * self.target_network(
                             torch.tensor(transition.next_state, dtype=torch.float32)
-                        )
+                        )[
+                            torch.argmax(
+                                self.policy_network(
+                                    torch.tensor(
+                                        transition.next_state, dtype=torch.float32
+                                    )
+                                )
+                            )
+                        ]
+                        if transition.next_state is not None
+                        else 0
                     )
-                    if transition.next_state is not None
-                    else 0
-                )
-                for transition in minibatch
-            ],
-            dtype=torch.float32,
-        )
+                    for transition in minibatch
+                ],
+                dtype=torch.float32,
+            )
+        else:
+            labels = torch.tensor(
+                [
+                    transition.reward
+                    + (
+                        self.gamma
+                        * torch.max(
+                            self.target_network(
+                                torch.tensor(transition.next_state, dtype=torch.float32)
+                            )
+                        )
+                        if transition.next_state is not None
+                        else 0
+                    )
+                    for transition in minibatch
+                ],
+                dtype=torch.float32,
+            )
+
         actions = torch.tensor([transition.action for transition in minibatch])
 
         preds = torch.gather(

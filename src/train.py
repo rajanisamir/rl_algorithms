@@ -61,13 +61,13 @@ def parse_arguments():
     parser.add_argument(
         "--epsilon-decay-steps",
         type=int,
-        default=75_000,
+        default=150_000,
         help="the number of steps across which to decay epsilon",
     )
     parser.add_argument(
         "--epsilon-eval",
         type=int,
-        default=0.01,
+        default=0.05,
         help="the value of epsilon for evaluation",
     )
     parser.add_argument(
@@ -79,7 +79,7 @@ def parse_arguments():
     parser.add_argument(
         "--lr",
         type=float,
-        default=1e-4,
+        default=5e-4,
         help="the learning rate for training the policy network",
     )
     parser.add_argument(
@@ -94,6 +94,7 @@ def parse_arguments():
         default=250,
         help="the number of timesteps between DQN target network updates",
     )
+    parser.add_argument("--double-dqn", action="store_true", help="use double DQN")
     parser.add_argument(
         "--hidden-dim",
         type=int,
@@ -103,7 +104,7 @@ def parse_arguments():
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default=100_000,
+        default=200_000,
         help="the number of timesteps for which to train the RL agent",
     )
 
@@ -141,7 +142,7 @@ class InteractiveEnvironment:
                 sys.exit()
 
             if self.paused:
-                time.sleep(0.5)
+                time.sleep(0.25)
 
             while self.paused:
                 if keyboard.is_pressed("n"):
@@ -194,6 +195,7 @@ if __name__ == "__main__":
         lr=args.lr,
         bs=args.bs,
         tau=args.tau,
+        double_dqn=args.double_dqn,
         hidden_dim=args.hidden_dim,
         save_path=args.save_path,
     )
@@ -221,6 +223,7 @@ if __name__ == "__main__":
         lr=args.lr,
         bs=args.bs,
         tau=args.tau,
+        double_dqn=args.double_dqn,
         hidden_dim=args.hidden_dim,
         save_path=args.save_path,
         eval=True,
